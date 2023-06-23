@@ -1,8 +1,10 @@
 import React, { Component } from 'react'
-import { ScrollView } from 'react-native';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import LinearGradient from "react-native-linear-gradient";
-import Icon from "react-native-vector-icons/Ionicons"
+
+import { StyleSheet } from 'react-native'
+import Start from './Start';
+import Result from './Result';
+import QueAns from './QueAns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface IProps { }
 interface IState {
@@ -16,7 +18,13 @@ interface IState {
     points: number,
     time: number,
     start: boolean,
-    selected: number[]
+    selected: number[],
+    startStyle: boolean,
+    series: number[];
+    sliceColor: string[];
+    right:number,
+    wrong:number,
+    skip:number
 }
 
 let timerInterVal: number;
@@ -101,10 +109,10 @@ export class Main extends Component<IProps, IState> {
                 {
                     question: "What is the children prop",
                     options: [
-                    { value: 'allow you to pass components as data to other components', checked: false },
-                    { value: 'their is no such props', checked: false },
-                    { value: 'Normally like other Props', checked: false },
-                    { value: 'Non-of the above', checked: false }],
+                        { value: 'allow you to pass components as data to other components', checked: false },
+                        { value: 'their is no such props', checked: false },
+                        { value: 'Normally like other Props', checked: false },
+                        { value: 'Non-of the above', checked: false }],
                     correct: 0,
 
                 },
@@ -113,116 +121,119 @@ export class Main extends Component<IProps, IState> {
             index: 0,
             points: 0,
             time: 20,
-            start: true
+            start: true,
+            startStyle: false,
+            series: [],
+            sliceColor: [],
+            right:0,
+            wrong:0,
+            skip:0,
         }
     }
     OnClick = (ind: number, correct: number) => {
-        let { points, index, selected } = this.state;
+        let { points, index, selected ,series,sliceColor,right,wrong,skip} = this.state;
         clearInterval(timerInterVal)
-        selected[index] = ind;
-        this.setState({ points: (ind == correct) ? points + 1 : points, index: index + 1, time: 20, selected: selected })
+        selected[index] = ind;       
+        if(selected[index]==correct){
+            right++;
+        }else{
+            wrong++;
+        }
+        if(index==9){
+            let i=0;
+                while(i<right){
+                    sliceColor.push("green")
+                    series.push(123);
+                    i++;
+                }
+                 while(i<(right+skip)){
+                    sliceColor.push("#f2bf05");
+                    series.push(123);
+                    i++;
+                }
+                while(i<10){
+                    sliceColor.push("red")
+                    series.push(123);
+                    i++;
+                }
+         
+        }
+            this.setState({ points: (ind == correct) ? points + 1 : points,
+                 index: index + 1,
+                  time: 20, selected: selected,
+                  series:series,sliceColor:sliceColor,
+                 right:right,
+                 wrong:wrong,
+                        
+                }) 
     }
-
-    componentDidUpdate(prevProps: Readonly<IProps>, prevState: Readonly<IState>, snapshot?: any): void {
-        const { index, time, data,selected } = this.state;
+    start=() => this.setState({ start: false })
+    result=() => this.setState({ start: true, points: 0, index: 0, selected: [] })
+    componentDidUpdate() {
+        const { index, time, data, selected,skip } = this.state;
         if (index < data.length) {
             clearInterval(timerInterVal);
-            selected[index]=-1
+            selected[index] = -1
+            
             timerInterVal = setInterval(() => {
                 if (time == 0) {
-                    this.setState({ index: index + 1, time: 20,selected :selected})
-                } else {
+                    this.setState({ index: index + 1, time: 20, selected: selected,skip:skip+1 })
+                } else {      
                     this.setState({ time: time - 1 })
                 }
             }, 1000)
         }
     }
     render() {
-        const { data, points, index, time, start ,selected} = this.state;
+        const { data, points, index, time, start, selected, startStyle,series,sliceColor } = this.state;
         let item = data[index]
         return (start ? (
-            <LinearGradient
-                colors={['#f0a', '#afa']}
-                start={{ x: 1, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={Styles.linear}
-            >
-                {/* <View>
-                    <Text style={[]}>Quiz App</Text>
-                    <Text>
-                        Wel Come to quiz application, it has 10 sections,you should attempt each question with in 20 seconds ..!,
-                        each carryes 
-                    </Text>
-                </View> */}
-
-                <TouchableOpacity
-                    onPress={() => this.setState({ start: false })}
-                    style={Styles.startParent}
-                   >
-                    <Text style={Styles.start}>Start Test</Text>
-                </TouchableOpacity>
-            </LinearGradient>
+            <Start
+            start={this.start}
+            startStyle={startStyle}
+            />
         ) : (index == data.length ? (
-            <View style={Styles.optionParent}>
-                <Text style={Styles.result}>Result</Text>
-                <ScrollView style={Styles.scroll}
-                showsHorizontalScrollIndicator={false}
-                >
-                    {data.map((item,index)=>{
-                        return (<View key={index+""} style={Styles.ansDisplay}>
-                            <Text style={[Styles.que,{color:selected[index]==-1?"#f2bf05":"#000"}]}>{index+1}.{item.question}</Text>
-                            {<View>
-                                {item.options.map((option,ind)=>{
-                                    return <View style={selected[index]==ind&&selected[index]!=item.correct?Styles.inCorrect:((item.correct==ind)?(Styles.correct):(Styles.normal))}>
-                                        <Text>{option.value}</Text>
-                                    </View>
-                                })}
-                            </View>}
-                        </View>)
-                    })}
-                </ScrollView>
-                <Text
-                    style={[Styles.points, points < 4 ? { color: "red" } : points < 7 ? { color: "#f2bf05" } : { color: "green" }]}>
-                    {points * 10}/100</Text>
-                <TouchableOpacity
-                    onPress={() => this.setState({ start: true, points: 0, index: 0 ,selected:[]})}
-                    style={Styles.goback}
-                >
-                    <Icon name="arrow-back" size={30} color={"#fff"}  />
-                    <Text style={{color:"#fff",fontWeight:"700"}}> Back</Text>
-                </TouchableOpacity>
-            </View>) : (
-            <View style={Styles.qA}>
-                <View style={Styles.qaparent}>
-                    <View style={Styles.parentTimer}>
-                        <Text style={Styles.que}>{index + 1}.{item.question} ?</Text>
-                        <Text style={[{ color: time < 6 ? "red" : (time < 10 ? "#f2bf05" : "green") }, Styles.timer]}>{time}</Text>
-                    </View>
-
-                    {item.options.map((option, ind) => {
-                        return <TouchableOpacity
-                            onPress={() => this.OnClick(ind, item.correct)}
-                            style={Styles.option}
-                            key={index + "s" + ind}
-                            
-                        >
-                            <Text style={Styles.txt}>{option.value}</Text>
-                        </TouchableOpacity>
-                    })}
-                </View>
-            </View>))
+            <Result
+            result={this.result}
+            data={data}
+            points={points}
+            selected={selected}
+            sliceColor={sliceColor}
+            series={series}
+            />
+            ) : (
+                <QueAns
+                item={item}
+                OnClick={this.OnClick}
+                index={index}
+                time={time}
+                />
+            ))
         )
     }
 }
 
 export default Main
 
-const Styles = StyleSheet.create({
+export const Styles = StyleSheet.create({
     option: {
         margin: 10,
         backgroundColor: "#bee4fa",
         padding: 5,
         borderRadius: 5
+    },
+    insInner: {
+        color: "#fff",
+        fontSize: 17
+    },
+    webview:{height:200,
+        width:300,
+        borderRadius:50,
+        overflow:"hidden"},
+    insParent:{
+        marginVertical:10,
+        justifyContent:"center",
+        alignItems:"center"
     },
     txt: {
         fontWeight: "bold",
@@ -255,56 +266,78 @@ const Styles = StyleSheet.create({
         height: 30,
         width: 30
     },
+    quizHeadding:{ fontWeight: "bold", fontSize: 23 ,borderBottomWidth:1,borderBottomColor:"#84f5b1"},
 
-
-    correct:{
+    correct: {
         margin: 10,
         backgroundColor: "#84f5b1",
         padding: 5,
         borderRadius: 5
     },
-    normal:{
+    normal: {
         margin: 10,
         backgroundColor: "#bee4fa",
         padding: 5,
         borderRadius: 5
     },
-    inCorrect:{
+    inCorrect: {
         margin: 10,
         backgroundColor: "#f5857f",
         padding: 5,
         borderRadius: 5
     },
-    ansDisplay:{
-        margin:5,
-        backgroundColor:""
+    innerLinear: {
+        backgroundColor: "#58a9f5",
+        padding: 10,
+        borderRadius: 10,
+        margin: 4,
+        justifyContent: "center",
+        alignItems: "center"
     },
-    scroll:{
-        backgroundColor:"#f7fcff",
+    gobackinner:{ 
+        color: "#fff",
+         fontWeight: "700"
+         },
+    ansDisplay: {
+        margin: 5,
+        backgroundColor: ""
     },
-    result:{
-        fontSize:30,
-        color:"#000",
-        fontFamily:"Georgia"
+    scroll: {
+        backgroundColor: "#f7fcff",
+    },
+    result: {
+        fontSize: 30,
+        color: "#000",
+        fontFamily: "Georgia"
     },
 
 
-    start: { 
-        color: "#000"
-     },
+    start: {
+        color: "#000",
+        fontSize: 18,
+
+    },
     startParent: {
-        borderWidth: 1,
-        padding: 5,
-        paddingHorizontal: 15,
+
+       
+     height:40,
         borderRadius: 5,
-        backgroundColor: "#fff"
+        marginTop:5,
+        backgroundColor: "#83f7e4",
+        
+
     },
     parentTimer: {
         flexDirection: "column-reverse",
         justifyContent: "space-around",
         alignItems: "center",
     },
-    linear: { width: "100%", height: "100%", justifyContent: "center", alignItems: "center" },
+    linear: { 
+        width: "100%",
+         height: "100%", 
+         justifyContent: "center",
+          alignItems: "center" 
+        },
     qaparent: {
         backgroundColor: "#d4eefc",
         borderRadius: 10
@@ -318,12 +351,13 @@ const Styles = StyleSheet.create({
     },
     goback: {
         backgroundColor: "#000",
-        flexDirection:"row",
-        borderRadius:40,
-        justifyContent:"center",
-        alignItems:"center",
-        paddingHorizontal:5,
-        marginBottom:2,
-        paddingVertical:3
+        flexDirection: "row",
+        borderRadius: 40,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        marginBottom: 2,
+        paddingVertical: 3,
+
     }
 })

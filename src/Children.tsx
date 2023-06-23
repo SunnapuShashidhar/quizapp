@@ -4,7 +4,12 @@ import {WebView} from "react-native-webview"
 export class Children extends Component {
   render() {
     return (
-        <WebView source={{ uri: 'https://embed.lottiefiles.com/animation/133700' }} style={{ flex: 1 }} />
+      <View>
+        <WebView
+     
+        source={{ uri: "https://embed.lottiefiles.com/animation/98991"}} style={{height:100,width:100}}/>
+
+      </View>
     )
   }
 }
